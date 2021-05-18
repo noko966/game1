@@ -39739,7 +39739,6 @@ var Game = /*#__PURE__*/function () {
     this.container.style.height = "100%";
     document.body.appendChild(this.container);
     var game = this;
-    this.anims = ['idle', 'walk'];
     this.clock = new THREE.Clock();
     this.idleToWalk = this.idleToWalk.bind(this);
     this.walkToIdleTo = this.walkToIdleTo.bind(this);
@@ -39749,6 +39748,12 @@ var Game = /*#__PURE__*/function () {
     this.keyUpHandler = this.keyUpHandler.bind(this);
     document.addEventListener('keydown', this.keyDownHandler, false);
     document.addEventListener('keyup', this.keyUpHandler, false);
+    this.upPressed = false;
+    this.downPressed = false;
+    this.leftPressed = false;
+    this.rightPressed = false;
+    this.walking = false;
+    this.idleing = true;
     this.init();
   }
 
@@ -39795,7 +39800,7 @@ var Game = /*#__PURE__*/function () {
       this.setWeight(endAction, 1);
       endAction.time = 0;
       startAction.crossFadeTo(endAction, duration, true);
-      this.player.action = endAction;
+      this.player.action = endAction._clip.name;
       console.log(this.player);
     }
   }, {
@@ -39867,26 +39872,14 @@ var Game = /*#__PURE__*/function () {
           }
         });
         var idle = game.player.mixer.clipAction(object.animations[1]);
-        var walk = game.player.mixer.clipAction(object.animations[2]); // let jump = game.player.mixer.clipAction(animations[1]);
+        var walk = game.player.mixer.clipAction(object.animations[2]);
+        var walkBack = game.player.mixer.clipAction(object.animations[2]);
+        walkBack.timeScale = -1; // let jump = game.player.mixer.clipAction(animations[1]);
 
-        game.player.actions = [idle, walk];
+        game.player.actions = [idle, walk, walkBack];
         game.activateAllActions();
-        game.walkToIdleTo(); // walk.play();
-        // game.player.actions[0].play();
-        // tloader.load(texture, function(texture){
-        //     object.traverse(function (child) {
-        //         if (child.isMesh) {
-        //             child.material.map = texture;
-        //         }
-        //     });
-        // });
-        // game.player.object = object;
-        // game.player.mixer.clipAction(object.animations[0]).play();
-        // game.animations.Idle = object.animations[0];
-        // game.loadNextAnim(loader);
-
+        game.walkToIdleTo();
         game.animate();
-        game.addButtons();
         console.log(game);
       });
       this.renderer = new THREE.WebGLRenderer({
@@ -39931,8 +39924,18 @@ var Game = /*#__PURE__*/function () {
 
       if (event.keyCode == 40) {
         this.downPressed = true;
+
+        if (this.player.action == "Idle" && this.player.action !== "WALK") {
+          this.executeCrossFade(this.player.actions[0], this.player.actions[2], 0.5);
+          console.log(this.player.action);
+        }
       } else if (event.keyCode == 38) {
         this.upPressed = true;
+
+        if (this.player.action == "Idle" && this.player.action !== "WALK") {
+          this.executeCrossFade(this.player.actions[0], this.player.actions[1], 0.5);
+          console.log(this.player.action);
+        }
       }
     }
   }, {
@@ -39948,6 +39951,11 @@ var Game = /*#__PURE__*/function () {
         this.downPressed = false;
       } else if (event.keyCode == 38) {
         this.upPressed = false;
+
+        if (this.player.action == "WALK" && this.player.action !== "Idle") {
+          this.executeCrossFade(this.player.actions[1], this.player.actions[0], 0.5);
+          console.log(this.player.action);
+        }
       }
     }
   }, {
@@ -40014,7 +40022,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "64152" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "57512" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
