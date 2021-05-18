@@ -26,7 +26,7 @@
             document.body.appendChild(this.container);
             const game = this;
 
-            this.anims = ['walk'];
+            this.anims = ['idle', 'walk'];
             this.clock = new THREE.Clock();
 
             this.idleToWalk = this.idleToWalk.bind(this);
@@ -34,23 +34,25 @@
 
             this.synchronizeCrossFade = this.synchronizeCrossFade.bind(this);
             this.executeCrossFade = this.executeCrossFade.bind(this);
+            this.keyDownHandler = this.keyDownHandler.bind(this);
+            this.keyUpHandler = this.keyUpHandler.bind(this);
 
-
+            document.addEventListener('keydown', this.keyDownHandler, false);
+            document.addEventListener('keyup', this.keyUpHandler, false);
 
             this.init();
-
         }
 
-        idleToWalk(){
-            this.prepareCrossFade( this.player.actions[1], this.player.actions[0], 1.0 );
+        idleToWalk() {
+            this.prepareCrossFade(this.player.actions[0], this.player.actions[1], 0.5);
         }
 
-        walkToIdleTo(){
-            this.prepareCrossFade( this.player.actions[0], this.player.actions[1], 1.0 );
+        walkToIdleTo() {
+            this.prepareCrossFade(this.player.actions[1], this.player.actions[0], 0.5);
         }
 
 
-        addButtons(){
+        addButtons() {
             let game = this;
             let idleBtn = document.createElement("button");
             let walkBtn = document.createElement("button");
@@ -63,46 +65,45 @@
             buttonWrapper.appendChild(walkBtn);
             document.body.appendChild(buttonWrapper);
 
-
             idleBtn.addEventListener("click", game.idleToWalk);
             walkBtn.addEventListener("click", game.walkToIdleTo);
-
         }
 
-        prepareCrossFade( startAction, endAction, defaultDuration ) {
+        prepareCrossFade(startAction, endAction, defaultDuration) {
 
             const duration = defaultDuration;
 
-            if ( startAction === this.player.actions[0] ) {
+            if (startAction === this.player.actions[0]) {
 
-                this.executeCrossFade( startAction, endAction, duration );
+                this.executeCrossFade(startAction, endAction, duration);
 
             } else {
 
-                this.synchronizeCrossFade( startAction, endAction, duration );
+                this.synchronizeCrossFade(startAction, endAction, duration);
 
             }
 
         }
 
-        executeCrossFade( startAction, endAction, duration ) {
-            this.setWeight( endAction, 1 );
+        executeCrossFade(startAction, endAction, duration) {
+            this.setWeight(endAction, 1);
             endAction.time = 0;
-            startAction.crossFadeTo( endAction, duration, true );
-
+            startAction.crossFadeTo(endAction, duration, true);
+            this.player.action = endAction;
+            console.log(this.player);
         }
 
-        synchronizeCrossFade( startAction, endAction, duration ) {
+        synchronizeCrossFade(startAction, endAction, duration) {
             let game = this;
-            this.player.mixer.addEventListener( 'loop', onLoopFinished );
+            this.player.mixer.addEventListener('loop', onLoopFinished);
 
-            function onLoopFinished( event ) {
+            function onLoopFinished(event) {
 
-                if ( event.action === startAction ) {
+                if (event.action === startAction) {
 
-                    game.player.mixer.removeEventListener( 'loop', onLoopFinished );
+                    game.player.mixer.removeEventListener('loop', onLoopFinished);
 
-                    game.executeCrossFade( startAction, endAction, duration );
+                    game.executeCrossFade(startAction, endAction, duration);
 
                 }
 
@@ -110,11 +111,11 @@
 
         }
 
-        setWeight( action, weight ) {
+        setWeight(action, weight) {
 
             action.enabled = true;
-            action.setEffectiveTimeScale( 1 );
-            action.setEffectiveWeight( weight );
+            action.setEffectiveTimeScale(1);
+            action.setEffectiveWeight(weight);
 
         }
 
@@ -127,13 +128,14 @@
             this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
 
             let light = new THREE.DirectionalLight(0xffffff);
-            light.position.set(0, 50, 50);
+            light.position.set(-10, 20, 20);
             light.castShadow = true;
             light.shadow.camera.top = 180;
             light.shadow.camera.bottom = -100;
             light.shadow.camera.left = -120;
             light.shadow.camera.right = 120;
             this.scene.add(light);
+            this.sun = light;
 
             var mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(4000, 4000), new THREE.MeshPhongMaterial({
                 color: 0x999999,
@@ -154,15 +156,20 @@
             const tloader = new THREE.TextureLoader();
 
             loader.load(spiderGLTF, function (object) {
-                const spider = object.scene;
-                console.log(object);
-                object.mixer = new THREE.AnimationMixer(spider);
+
+                game.spider = object.scene;
+
+                object.mixer = new THREE.AnimationMixer(game.spider);
                 game.player.mixer = object.mixer;
                 // game.player.root = object.mixer.getRoot();
-                spider.scale.set(10, 10, 10);
-                game.scene.add(spider);
+                game.spider.scale.set(10, 10, 10);
+                game.spider.position.setY(-2.5);
+                game.scene.add(game.spider);
 
-                spider.traverse(function (child) {
+                game.sun.parent = game.spider;
+                game.sun.target = game.spider;
+
+                game.spider.traverse(function (child) {
                     if (child.isMesh) {
                         child.material.map = null;
                         child.castShadow = true;
@@ -177,6 +184,8 @@
                 game.player.actions = [idle, walk];
 
                 game.activateAllActions();
+
+                game.walkToIdleTo();
 
                 // walk.play();
 
@@ -199,6 +208,8 @@
                 game.animate();
 
                 game.addButtons();
+
+                console.log(game);
 
             })
 
@@ -227,57 +238,46 @@
             // setWeight( walkAction, settings[ 'modify walk weight' ] );
             // setWeight( runAction, settings[ 'modify run weight' ] );
 
-            this.player.actions.forEach( function ( action ) {
+            this.player.actions.forEach(function (action) {
                 action.play();
-            } );
+            });
 
         }
 
-        // loadNextAnim(loader){
-        //     let anim = this.anims.pop();
-        //     const game = this;
-        //     loader.load(animWalk,function(object){
-        //         game.animations[anim] = object.animations[0];
-
-        //         if(game.anims.length > 0){
-        //             game.loadNextAnim(loader);
-        //         }else{
-        //             delete game.anims;
-        //             game.action = 'Idle';
-        //             game.animate();
-        //         }
-        //     })
-        // }
-
-        // set action(name){
-        //     const action = this.player.mixer.clipAction(this.animations[name]);
-        //     action.time = 0;
-        //     this.player.mixer.stopAllAction();
-        //     this.player.action = name;
-        //     this.player.actionTime = Date.now();
-        //     this.player.actionName = name;
-        //     action.crossFadeTo(action, 1, false);
-        //     console.log(action);
-        //     action.play();
-        // }
-        // get action(){
-        //     if(this.player === undefined || this.player.actionName === undefined) return "";
-        //     return this.player.actionName;
-        // }
-
-        // toggleAnimation() {
-        //     if (game.action == "Idle") {
-        //         game.action = "walk";
-        //     } else {
-        //         game.action = "Idle";
-        //     }
-        // }
 
         onWindowResize() {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         }
+
+
+        keyDownHandler(event) {
+            if (event.keyCode == 39) {
+                this.rightPressed = true;
+            } else if (event.keyCode == 37) {
+                this.leftPressed = true;
+            }
+            if (event.keyCode == 40) {
+                this.downPressed = true;
+            } else if (event.keyCode == 38) {
+                this.upPressed = true;
+            }
+        }
+
+        keyUpHandler(event) {
+            if (event.keyCode == 39) {
+                this.rightPressed = false;
+            } else if (event.keyCode == 37) {
+                this.leftPressed = false;
+            }
+            if (event.keyCode == 40) {
+                this.downPressed = false;
+            } else if (event.keyCode == 38) {
+                this.upPressed = false;
+            }
+        }
+
 
         animate() {
             const game = this;
@@ -288,6 +288,21 @@
 
             if (this.player.mixer !== undefined) {
                 this.player.mixer.update(dt);
+            }
+
+            var dir = new THREE.Vector3( 0, 0, -1 );
+            dir.applyQuaternion( this.spider.quaternion );
+
+            if (this.rightPressed) {
+                this.spider.rotation.y -= Math.PI / 100;
+            } else if (this.leftPressed) {
+                this.spider.rotation.y += Math.PI / 100;
+            }
+            if (this.downPressed) {
+                this.spider.position.add(dir);
+            } else if (this.upPressed) {
+                
+                this.spider.position.sub(dir);
             }
 
             this.renderer.render(this.scene, this.camera);
