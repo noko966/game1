@@ -6,7 +6,14 @@
         GLTFLoader
     } from 'three/examples/jsm/loaders/GLTFLoader';
 
-    import spiderGLTF from '../3dModels/spider.glb';
+    import spiderGLTF from '../3dModels/spider2.glb';
+
+
+    import spiderBase from '../3dModels/textures/base.png';
+    import spiderNormal from '../3dModels/textures/normal.png';
+    import spiderMetalness from '../3dModels/textures/metalness.png';
+    import spiderRoughness from '../3dModels/textures/roughness.png';
+    import spiderHeight from '../3dModels/textures/height.png';
 
 
     class Game {
@@ -21,15 +28,14 @@
             this.camera;
             this.renderer;
 
+            this.crossFadeDuration = 0.3;
+
             this.container = document.createElement("div");
             this.container.style.height = "100%";
             document.body.appendChild(this.container);
             const game = this;
 
             this.clock = new THREE.Clock();
-
-            this.idleToWalk = this.idleToWalk.bind(this);
-            this.walkToIdleTo = this.walkToIdleTo.bind(this);
 
             this.synchronizeCrossFade = this.synchronizeCrossFade.bind(this);
             this.executeCrossFade = this.executeCrossFade.bind(this);
@@ -51,15 +57,6 @@
             this.init();
         }
 
-        idleToWalk() {
-            this.prepareCrossFade(this.player.actions[0], this.player.actions[1], 0.5);
-        }
-
-        walkToIdleTo() {
-            this.prepareCrossFade(this.player.actions[1], this.player.actions[0], 0.5);
-        }
-
-
         addButtons() {
             let game = this;
             let idleBtn = document.createElement("button");
@@ -73,8 +70,6 @@
             buttonWrapper.appendChild(walkBtn);
             document.body.appendChild(buttonWrapper);
 
-            idleBtn.addEventListener("click", game.idleToWalk);
-            walkBtn.addEventListener("click", game.walkToIdleTo);
         }
 
         prepareCrossFade(startAction, endAction, defaultDuration) {
@@ -98,7 +93,6 @@
             endAction.time = 0;
             startAction.crossFadeTo(endAction, duration, true);
             this.player.action = endAction._clip.name;
-            console.log(this.player);
         }
 
         synchronizeCrossFade(startAction, endAction, duration) {
@@ -133,10 +127,13 @@
 
             this.scene = new THREE.Scene();
             this.scene.background = new THREE.Color(0xa0a0a0);
-            this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
+            // this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
+
+            let ambientLight = new THREE.AmbientLight(0xffffff);
+            this.scene.add(ambientLight);
 
             let light = new THREE.DirectionalLight(0xffffff);
-            light.position.set(-10, 20, 20);
+            light.position.set(10, 20, 20);
             light.castShadow = true;
             light.shadow.camera.top = 180;
             light.shadow.camera.bottom = -100;
@@ -145,15 +142,15 @@
             this.scene.add(light);
             this.sun = light;
 
-            var mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(4000, 4000), new THREE.MeshPhongMaterial({
-                color: 0x999999,
+            var mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(1000, 1000), new THREE.MeshPhongMaterial({
+                color: 0x666666,
                 depthWrite: false
             }));
             mesh.rotation.x = -Math.PI / 2;
             mesh.receiveShadow = true;
             this.scene.add(mesh);
 
-            var grid = new THREE.GridHelper(4000, 60, 0x000000, 0x000000);
+            var grid = new THREE.GridHelper(1000, 60, 0x000000, 0x000000);
             grid.material.opacity = 0.2;
             grid.material.transparent = true;
             this.scene.add(grid);
@@ -177,26 +174,59 @@
                 game.sun.parent = game.spider;
                 game.sun.target = game.spider;
 
-                
-
                 game.spider.traverse(function (child) {
                     if (child.isMesh) {
-                        child.material.map = null;
+                        console.log(child.material);
+
+                        let base = tloader.load(spiderBase);
+                        base.flipY = false;
+                        let metal = tloader.load(spiderMetalness);
+                        metal.flipY = false;
+                        let rough = tloader.load(spiderRoughness);
+                        rough.flipY = false;
+                        let norm = tloader.load(spiderNormal);
+                        norm.flipY = false;
+                          
+                        child.material.map = base;
+                        child.material.metalnessMap = metal;
+                        child.material.roughnessMap = rough;
+                        child.material.normalMap = norm;
+
+                        child.material.metalness = 0.8;
+                        child.material.roughness = 0.6;
+
+
                         child.castShadow = true;
                         child.receiveShadow = false;
                     }
                 });
 
-                let idle = game.player.mixer.clipAction(object.animations[1]);
+                let idle = game.player.mixer.clipAction(object.animations[0]);
                 let walk = game.player.mixer.clipAction(object.animations[2]);
-                let walkBack = game.player.mixer.clipAction(object.animations[2]);
-                walkBack.timeScale = -1;
-                // let jump = game.player.mixer.clipAction(animations[1]);
-                game.player.actions = [idle, walk, walkBack];
+                let walkBack = game.player.mixer.clipAction(object.animations[3]);
+                let walkRight = game.player.mixer.clipAction(object.animations[4]);
+                let jump = game.player.mixer.clipAction(object.animations[1]);
+
+                console.log(object.animations);
+                game.player.actions = [idle, walk, walkBack, walkRight, jump];
                 game.activateAllActions();
-                game.walkToIdleTo();
+
+                game.idleAction = game.player.actions[0];
+                game.walkAction = game.player.actions[1];
+                game.walkBackAction = game.player.actions[2];
+                game.walkRightAction = game.player.actions[3];
+                game.jumpAction = game.player.actions[4];
+
+
+                game.walkAction.weight = 0;
+                game.walkBackAction.weight = 0;
+                game.walkRightAction.weight = 0;
+                game.jumpAction.weight = 0;
+
+
+                game.player.action = "Idle";
                 game.animate();
-                console.log(game);
+
             })
 
             this.renderer = new THREE.WebGLRenderer({
@@ -238,42 +268,76 @@
         }
 
 
+        
+
         keyDownHandler(event) {
-            
             if (event.keyCode == 39) {
                 this.rightPressed = true;
+                if (this.player.action == "Idle") {
+                    this.executeCrossFade(this.player.actions[0], this.player.actions[3], this.crossFadeDuration);
+                }
+                if (this.player.action == "WALK") {
+                    this.executeCrossFade(this.player.actions[1], this.player.actions[3], this.crossFadeDuration);
+                }
             } else if (event.keyCode == 37) {
                 this.leftPressed = true;
+                if (this.player.action == "Idle") {
+                    this.executeCrossFade(this.player.actions[0], this.player.actions[3], this.crossFadeDuration);
+                }
+                if (this.player.action == "WALK") {
+                    this.executeCrossFade(this.player.actions[1], this.player.actions[3], this.crossFadeDuration);
+                }
             }
             if (event.keyCode == 40) {
                 this.downPressed = true;
-                if(this.player.action == "Idle" && this.player.action !== "WALK"){
-                    this.executeCrossFade(this.player.actions[0],this.player.actions[2],0.5);
-                    console.log(this.player.action);
+                if (this.player.action == "Idle") {
+                    this.executeCrossFade(this.player.actions[0], this.player.actions[2], this.crossFadeDuration);
                 }
             } else if (event.keyCode == 38) {
                 this.upPressed = true;
-                if(this.player.action == "Idle" && this.player.action !== "WALK"){
-                    this.executeCrossFade(this.player.actions[0],this.player.actions[1],0.5);
-                    console.log(this.player.action);
+                if (this.player.action == "Idle") {
+                    this.executeCrossFade(this.player.actions[0], this.player.actions[1], this.crossFadeDuration);
+                }
+            }
+
+
+            if (event.keyCode == 32) {
+                this.jumpPressed = true;
+                if (this.player.action == "Idle") {
+                    this.executeCrossFade(this.player.actions[0], this.player.actions[4], this.crossFadeDuration);
                 }
             }
         }
 
         keyUpHandler(event) {
-            
+
             if (event.keyCode == 39) {
                 this.rightPressed = false;
+                if (this.player.action == "WALK RIGHT") {
+                    this.executeCrossFade(this.player.actions[3], this.player.actions[0], this.crossFadeDuration);
+                }
             } else if (event.keyCode == 37) {
                 this.leftPressed = false;
+                if (this.player.action == "WALK RIGHT") {
+                    this.executeCrossFade(this.player.actions[3], this.player.actions[0], this.crossFadeDuration);
+                }
             }
             if (event.keyCode == 40) {
                 this.downPressed = false;
+                if (this.player.action == "WALK BACK") {
+                    this.executeCrossFade(this.player.actions[2], this.player.actions[0], this.crossFadeDuration);
+                }
             } else if (event.keyCode == 38) {
                 this.upPressed = false;
-                if(this.player.action == "WALK" && this.player.action !== "Idle"){
-                    this.executeCrossFade(this.player.actions[1],this.player.actions[0],0.5);
-                    console.log(this.player.action);
+                if (this.player.action == "WALK") {
+                    this.executeCrossFade(this.player.actions[1], this.player.actions[0], this.crossFadeDuration);
+                }
+            }
+
+            if (event.keyCode == 32) {
+                this.jumpPressed = false;
+                if (this.player.action == "Idle") {
+                    this.executeCrossFade(this.player.actions[4], this.player.actions[0], this.crossFadeDuration);
                 }
             }
         }
@@ -290,18 +354,18 @@
                 this.player.mixer.update(dt);
             }
 
-            var dir = new THREE.Vector3( 0, 0, -1 );
-            dir.applyQuaternion( this.spider.quaternion );
+            var dir = new THREE.Vector3(0, 0, -0.8);
+            dir.applyQuaternion(this.spider.quaternion);
 
             if (this.rightPressed) {
-                this.spider.rotation.y -= Math.PI / 100;
+                this.spider.rotation.y -= Math.PI / 200;
             } else if (this.leftPressed) {
-                this.spider.rotation.y += Math.PI / 100;
+                this.spider.rotation.y += Math.PI / 200;
             }
             if (this.downPressed) {
                 this.spider.position.add(dir);
             } else if (this.upPressed) {
-                
+
                 this.spider.position.sub(dir);
             }
 
