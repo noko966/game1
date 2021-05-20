@@ -102,7 +102,6 @@
             function onLoopFinished(event) {
 
                 if (event.action === startAction) {
-
                     game.player.mixer.removeEventListener('loop', onLoopFinished);
 
                     game.executeCrossFade(startAction, endAction, duration);
@@ -123,11 +122,11 @@
 
         init() {
             this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-            this.camera.position.set(100, 100, 400);
+            this.camera.position.set(100, 100, 100);
 
             this.scene = new THREE.Scene();
-            this.scene.background = new THREE.Color(0xa0a0a0);
-            // this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
+            this.scene.background = new THREE.Color(0xdedede);
+            this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
 
             let ambientLight = new THREE.AmbientLight(0xffffff);
             this.scene.add(ambientLight);
@@ -206,6 +205,8 @@
                 let walkBack = game.player.mixer.clipAction(object.animations[3]);
                 let walkRight = game.player.mixer.clipAction(object.animations[4]);
                 let jump = game.player.mixer.clipAction(object.animations[1]);
+
+                jump.repetitions = 1;
 
                 console.log(object.animations);
                 game.player.actions = [idle, walk, walkBack, walkRight, jump];
@@ -300,11 +301,18 @@
                 }
             }
 
-
             if (event.keyCode == 32) {
                 this.jumpPressed = true;
                 if (this.player.action == "Idle") {
-                    this.executeCrossFade(this.player.actions[0], this.player.actions[4], this.crossFadeDuration);
+                    this.player.mixer.addEventListener('finished', onLoopFinished);
+                    this.setWeight(this.player.actions[4], 1);
+                    this.player.actions[4].time = 0;
+                    this.player.actions[0].crossFadeTo(this.player.actions[4], game.crossFadeDuration, true);
+
+                    function onLoopFinished(event) {
+                            game.player.mixer.removeEventListener('finished', onLoopFinished);
+                            game.executeCrossFade(game.player.actions[4], game.player.actions[0], game.crossFadeDuration);
+                    }
                 }
             }
         }
@@ -334,12 +342,6 @@
                 }
             }
 
-            if (event.keyCode == 32) {
-                this.jumpPressed = false;
-                if (this.player.action == "Idle") {
-                    this.executeCrossFade(this.player.actions[4], this.player.actions[0], this.crossFadeDuration);
-                }
-            }
         }
 
 

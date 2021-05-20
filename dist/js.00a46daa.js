@@ -39833,10 +39833,10 @@ var Game = /*#__PURE__*/function () {
     key: "init",
     value: function init() {
       this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-      this.camera.position.set(100, 100, 400);
+      this.camera.position.set(100, 100, 100);
       this.scene = new THREE.Scene();
-      this.scene.background = new THREE.Color(0xa0a0a0); // this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
-
+      this.scene.background = new THREE.Color(0xdedede);
+      this.scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
       var ambientLight = new THREE.AmbientLight(0xffffff);
       this.scene.add(ambientLight);
       var light = new THREE.DirectionalLight(0xffffff);
@@ -39898,6 +39898,7 @@ var Game = /*#__PURE__*/function () {
         var walkBack = game.player.mixer.clipAction(object.animations[3]);
         var walkRight = game.player.mixer.clipAction(object.animations[4]);
         var jump = game.player.mixer.clipAction(object.animations[1]);
+        jump.repetitions = 1;
         console.log(object.animations);
         game.player.actions = [idle, walk, walkBack, walkRight, jump];
         game.activateAllActions();
@@ -39987,7 +39988,15 @@ var Game = /*#__PURE__*/function () {
         this.jumpPressed = true;
 
         if (this.player.action == "Idle") {
-          this.executeCrossFade(this.player.actions[0], this.player.actions[4], this.crossFadeDuration);
+          var onLoopFinished = function onLoopFinished(event) {
+            game.player.mixer.removeEventListener('finished', onLoopFinished);
+            game.executeCrossFade(game.player.actions[4], game.player.actions[0], game.crossFadeDuration);
+          };
+
+          this.player.mixer.addEventListener('finished', onLoopFinished);
+          this.setWeight(this.player.actions[4], 1);
+          this.player.actions[4].time = 0;
+          this.player.actions[0].crossFadeTo(this.player.actions[4], game.crossFadeDuration, true);
         }
       }
     }
@@ -40019,14 +40028,6 @@ var Game = /*#__PURE__*/function () {
 
         if (this.player.action == "WALK") {
           this.executeCrossFade(this.player.actions[1], this.player.actions[0], this.crossFadeDuration);
-        }
-      }
-
-      if (event.keyCode == 32) {
-        this.jumpPressed = false;
-
-        if (this.player.action == "Idle") {
-          this.executeCrossFade(this.player.actions[4], this.player.actions[0], this.crossFadeDuration);
         }
       }
     }
@@ -40094,7 +40095,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "58871" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "59416" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
